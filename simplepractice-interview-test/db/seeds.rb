@@ -4,41 +4,11 @@
 # - Each patient should have 10 appointments (5 in the past, 5 in the future)
 #   - Each appointment should be 50 minutes in duration
 Doctor.destroy_all
-Doctor.create!(
-[
-    {
-        name: "Florence Nightingale"
-    },
-    {
-        name: "Susan La Flesche Picotte"
-    },
-    {
-        name: "Louis Pasteur"
-    },
-    {
-        name: "Alexander Fleming"
-    },
-    {
-        name: "Mario Mario"
-    },
-    {
-        name: "Phil McGraw"
-    },
-    {
-        name: "Julius Hibbert"
-    },
-    {
-        name: "Sigma Klim"
-    },
-    {
-        name: "Ken Jeong"
-    },
-    {
-        name: "Emily Zarka"
-    }
-])
+10.times do |index|
+ Doctor.create!(name: "doctor #{index}")
+end
 
 p "Created #{Doctor.count} doctors"
-Doctor.all.each do |n|
-    p n
+Doctor.all.each do |doc|
+ p doc
 end
