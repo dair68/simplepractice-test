@@ -9,50 +9,48 @@ Appointment.destroy_all
 
 #creating 10 doctors
 10.times do |i|
- doc = Doctor.create!(name: "Doctor #{i}")
+  doc = Doctor.create!(name: Faker::Name.unique.name)
 
  #creating 10 patients for this doctor
- 10.times do
-  pt = Patient.create(
-        doctor_id: doc.id,
-        name: "Patient #{Patient.count}"
-       )
+  10.times do
+    pt = Patient.create(
+      doctor_id: doc.id,
+      name: "Patient #{Patient.count}"
+    )
 
     t = Time.now
 
     #creating 5 appointments in the past
     (1..5).each do |k|
-     Appointment.create(
-      doctor_id: doc.id,
-      patient_id: pt.id,
-      start_time: t.prev_day(k),
-      duration_in_minutes: 50
-     )
+      Appointment.create(
+        doctor_id: doc.id,
+        patient_id: pt.id,
+        start_time: t.prev_day(k),
+        duration_in_minutes: 50
+      )
     end
 
     #creating 5 appointments in the future
     (1..5).each do |k|
-     Appointment.create(
-      doctor_id: doc.id,
-      patient_id: pt.id,
-      start_time: t.next_day(k),
-      duration_in_minutes: 50
-     )
+      Appointment.create(
+        doctor_id: doc.id,
+        patient_id: pt.id,
+        start_time: t.next_day(k),
+        duration_in_minutes: 50
+      )
     end
   end
 end
 
-p "Created #{Doctor.count} doctors"
-Doctor.all.each do |doc|
- p doc
-end
+Rails.logger.debug {"Created #{Doctor.count} doctors"}
+Rails.logger.debug {"Doctors: #{Doctor.all.inspect}"}
 
-p "Created #{Patient.count} patients"
-Patient.where(doctor_id: Doctor.first.id).each do |pt|
- p pt
-end
+#p "Created #{Patient.count} patients"
+#Patient.where(doctor_id: Doctor.first.id).each do |pt|
+#  p pt
+#end
 
-p "Created #{Appointment.count} appointments"
-Appointment.where(patient_id: Patient.first.id).each do |a|
- p a
-end
+#p "Created #{Appointment.count} appointments"
+#Appointment.where(patient_id: Patient.first.id).each do |a|
+#  p a
+#end
