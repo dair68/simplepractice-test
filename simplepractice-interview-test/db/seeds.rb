@@ -11,19 +11,19 @@ currentTime = Time.now
 
 #creating 10 doctors
 10.times do
-  doc = Doctor.create!(name: Faker::Name.unique.name)
+  dr = Doctor.create!(name: Faker::Name.unique.name)
 
  #creating 10 patients for this doctor
   10.times do
     pt = Patient.create(
-      doctor_id: doc.id,
+      doctor_id: dr.id,
       name: Faker::Name.unique.name
     )
 
     #creating 5 appointments in the past for this patient
     5.times do
       Appointment.create(
-        doctor_id: doc.id,
+        doctor_id: dr.id,
         patient_id: pt.id,
         start_time: Faker::Time.backward(days: 365),
         duration_in_minutes: 50
@@ -33,7 +33,7 @@ currentTime = Time.now
     #creating 5 appointments in the future for this patient
     5.times do
       Appointment.create(
-        doctor_id: doc.id,
+        doctor_id: dr.id,
         patient_id: pt.id,
         start_time: Faker::Time.forward(days: 365),
         duration_in_minutes: 50
@@ -42,22 +42,22 @@ currentTime = Time.now
   end
 end
 
-Rails.logger.debug {"Created #{Doctor.count} doctors"}
-Rails.logger.debug {"Doctors: #{Doctor.all.inspect}"}
+Rails.logger.debug { "Created #{Doctor.count} doctors" }
+Rails.logger.debug { "Doctors: #{Doctor.all.inspect}" }
 
-Rails.logger.debug {"Created #{Patient.count} patients"}
-doc = Doctor.first
-pts = Patient.where(doctor_id: doc.id)
-Rails.logger.debug {"Dr. #{doc.name} has #{pts.count} patients"}
-Rails.logger.debug {"Dr. #{doc.name} patients: #{pts.inspect}"}
+Rails.logger.debug { "Created #{Patient.count} patients" }
+dr = Doctor.first
+pts = Patient.where(doctor_id: dr.id)
+Rails.logger.debug { "Dr. #{dr.name} has #{pts.count} patients" }
+Rails.logger.debug { "Dr. #{dr.name} patients: #{pts.inspect}" }
 
-Rails.logger.debug {"Created #{Appointment.count} appointments"}
+Rails.logger.debug { "Created #{Appointment.count} appointments" }
 pt = Patient.first
 pastAppts = Appointment.where(patient_id: pt.id).where("start_time < ?", currentTime)
 futureAppts = Appointment.where(patient_id: pt.id).where("start_time > ?", currentTime)
 
-Rails.logger.debug {"Patient #{pt.name} has #{pastAppts.count + futureAppts.count} appointments"}
-Rails.logger.debug {"Patient #{pt.name} has #{pastAppts.count} past appointments"}
-Rails.logger.debug {"Patient #{pt.name} past appointments: #{pastAppts.inspect}"}
-Rails.logger.debug {"Patient #{pt.name} has #{futureAppts.count} future appointments"}
-Rails.logger.debug {"Patient #{pt.name} future appointments: #{futureAppts.inspect}"}
+Rails.logger.debug { "Patient #{pt.name} has #{pastAppts.count + futureAppts.count} appointments" }
+Rails.logger.debug { "Patient #{pt.name} has #{pastAppts.count} past appointments" }
+Rails.logger.debug { "Patient #{pt.name} past appointments: #{pastAppts.inspect}" }
+Rails.logger.debug { "Patient #{pt.name} has #{futureAppts.count} future appointments" }
+Rails.logger.debug { "Patient #{pt.name} future appointments: #{futureAppts.inspect}" }
