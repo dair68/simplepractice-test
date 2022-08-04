@@ -15,7 +15,7 @@ Appointment.destroy_all
   10.times do
     pt = Patient.create(
       doctor_id: doc.id,
-      name: "Patient #{Patient.count}"
+      name: Faker::Name.unique.name
     )
 
     t = Time.now
@@ -45,10 +45,8 @@ end
 Rails.logger.debug {"Created #{Doctor.count} doctors"}
 Rails.logger.debug {"Doctors: #{Doctor.all.inspect}"}
 
-#p "Created #{Patient.count} patients"
-#Patient.where(doctor_id: Doctor.first.id).each do |pt|
-#  p pt
-#end
+Rails.logger.debug {"Created #{Patient.count} patients"}
+Rails.logger.debug {"Patients: #{Patient.all.inspect}"}
 
 #p "Created #{Appointment.count} appointments"
 #Appointment.where(patient_id: Patient.first.id).each do |a|
