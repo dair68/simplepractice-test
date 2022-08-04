@@ -7,8 +7,10 @@ Doctor.destroy_all
 Patient.destroy_all
 Appointment.destroy_all
 
+currentTime = Time.now
+
 #creating 10 doctors
-10.times do |i|
+10.times do
   doc = Doctor.create!(name: Faker::Name.unique.name)
 
  #creating 10 patients for this doctor
@@ -18,10 +20,8 @@ Appointment.destroy_all
       name: Faker::Name.unique.name
     )
 
-    t = Time.now
-
-    #creating 5 appointments in the past
-    (1..5).each do |k|
+    #creating 5 appointments in the past for this patient
+    5.times do
       Appointment.create(
         doctor_id: doc.id,
         patient_id: pt.id,
@@ -30,8 +30,8 @@ Appointment.destroy_all
       )
     end
 
-    #creating 5 appointments in the future
-    (1..5).each do |k|
+    #creating 5 appointments in the future for this patient
+    5.times do
       Appointment.create(
         doctor_id: doc.id,
         patient_id: pt.id,
@@ -53,11 +53,11 @@ Rails.logger.debug {"Dr. #{doc.name} patients: #{pts.inspect}"}
 
 Rails.logger.debug {"Created #{Appointment.count} appointments"}
 pt = Patient.first
-pastAppts = Appointment.where(patient_id: pt.id).where("start_time < ?", Time.now)
-futureAppts = Appointment.where(patient_id: pt.id).where("start_time > ?", Time.now)
+pastAppts = Appointment.where(patient_id: pt.id).where("start_time < ?", currentTime)
+futureAppts = Appointment.where(patient_id: pt.id).where("start_time > ?", currentTime)
 
 Rails.logger.debug {"Patient #{pt.name} has #{pastAppts.count + futureAppts.count} appointments"}
 Rails.logger.debug {"Patient #{pt.name} has #{pastAppts.count} past appointments"}
-Rails.logger.debug {"Patient #{pt.name} past appointments: #{futureAppts.inspect}"}
-Rails.logger.debug {"Patient #{pt.name} has #{pastAppts.count} future appointments"}
+Rails.logger.debug {"Patient #{pt.name} past appointments: #{pastAppts.inspect}"}
+Rails.logger.debug {"Patient #{pt.name} has #{futureAppts.count} future appointments"}
 Rails.logger.debug {"Patient #{pt.name} future appointments: #{futureAppts.inspect}"}
