@@ -1,36 +1,38 @@
 class Api::AppointmentsController < ApplicationController
   #get request for appointments
   def index
-    @resArray = nil
-
-    # GET /api/appointments
     # TODO: return all values
+    # GET /api/appointments
     if !request.query_string.present?
-      appts = Appointment.all
-      @resArray = toAppointmentArray(appts)
-      logger.debug { "Obtained all #{@resArray.length} appointments" }
-      logger.debug { "All appointments: #{@resArray.inspect}" }
+      filteredAppts = Appointment.all
+      @appointments = toAppointmentArray(filteredAppts)
+      logger.debug { "Obtained all #{@appointments.length} appointments" }
+      logger.debug { "All appointments: #{@appointments.inspect}" }
     # TODO: return filtered values
     # GET /api/appointments/?past=1. returns past appointments
     elsif params[:past] == "1"
-      appts = Appointment.where("start_time < ?", Time.now)
-      @resArray = toAppointmentArray(appts)
-      logger.debug { "Obtained #{@resArray.length} past appointments" }
-      logger.debug { "Past appointments: #{@resArray.inspect}" }
+      filteredAppts = Appointment.where("start_time < ?", Time.now)
+      @appointments = toAppointmentArray(filteredAppts)
+      logger.debug { "Obtained #{@appointments.length} past appointments" }
+      logger.debug { "Past appointments: #{@appointments.inspect}" }
     # GET /api/appointments/?past=0. returns future appointments
     elsif params[:past] == "0"
-      appts = Appointment.where("start_time > ?", Time.now)
-      @resArray = toAppointmentArray(appts)
-      logger.debug { "Obtained #{@resArray.length} future appointments" }
-      logger.debug { "Future appointments: #{@resArray.inspect}" }
+      filteredAppts = Appointment.where("start_time > ?", Time.now)
+      @appointments = toAppointmentArray(filteredAppts)
+      logger.debug { "Obtained #{@appointments.length} future appointments" }
+      logger.debug { "Future appointments: #{@appointments.inspect}" }
     else
-      @resArray = Array.new
-      logger.debug { "Error. Couldn't process for #{request.fullpath}" }
+      @appointments = nil
+      logger.debug { "Error. Couldn't process request for #{request.fullpath}" }
     end
-
     head :ok
-    return @resArray
   end
+
+  def create
+    # TODO:
+  end
+
+  private
 
   #takes an appointment active record object and returns array of form
   #[
@@ -43,8 +45,8 @@ class Api::AppointmentsController < ApplicationController
   #    duration_in_minutes: <int>
   #  }, ...
   #]
-  def toAppointmentArray (appointmentRecord)
-    @responseArray = Array.new
+  def toAppointmentArray(appointmentRecord)
+    apptArray = []
 
     #converting appointment object to array
     appointmentRecord.each do |appt|
@@ -63,13 +65,10 @@ class Api::AppointmentsController < ApplicationController
         duration_in_minutes: appt.duration_in_minutes
       }
 
-      @responseArray.push(apptObject)
+      apptArray.push(apptObject)
     end
 
-    return @responseArray
+    return apptArray
   end
 
-  def create
-    # TODO:
-  end
 end
