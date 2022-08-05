@@ -1,12 +1,53 @@
 class Api::AppointmentsController < ApplicationController
   #get request for appointments
   def index
+    @resArray = nil
+
     # GET /api/appointments
     # TODO: return all values
-    @appointments = Array.new
+    if !request.query_string.present?
+      appts = Appointment.all
+      @resArray = toAppointmentArray(appts)
+      logger.debug { "Obtained all #{@resArray.length} appointments" }
+      logger.debug { "All appointments: #{@resArray.inspect}" }
+    # TODO: return filtered values
+    # GET /api/appointments/?past=1. returns past appointments
+    elsif params[:past] == "1"
+      appts = Appointment.where("start_time < ?", Time.now)
+      @resArray = toAppointmentArray(appts)
+      logger.debug { "Obtained #{@resArray.length} past appointments" }
+      logger.debug { "Past appointments: #{@resArray.inspect}" }
+    # GET /api/appointments/?past=0. returns future appointments
+    elsif params[:past] == "0"
+      appts = Appointment.where("start_time > ?", Time.now)
+      @resArray = toAppointmentArray(appts)
+      logger.debug { "Obtained #{@resArray.length} future appointments" }
+      logger.debug { "Future appointments: #{@resArray.inspect}" }
+    else
+      @resArray = Array.new
+      logger.debug { "Error. Couldn't process for #{request.fullpath}" }
+    end
 
-    #populating @appointments with appointment data in a particular format
-    Appointment.all.each do |appt|
+    head :ok
+    return @resArray
+  end
+
+  #takes an appointment active record object and returns array of form
+  #[
+  #  {
+  #    id: <int>,
+  #    patient: { name: <string> },
+  #    doctor : { name: <string>, id: <int> },
+  #    created_at: <iso8601>,
+  #    start_time: <iso8601>,
+  #    duration_in_minutes: <int>
+  #  }, ...
+  #]
+  def toAppointmentArray (appointmentRecord)
+    @responseArray = Array.new
+
+    #converting appointment object to array
+    appointmentRecord.each do |appt|
       pt = Patient.find(appt.patient_id)
       dr = Doctor.find(appt.doctor_id)
 
@@ -22,14 +63,10 @@ class Api::AppointmentsController < ApplicationController
         duration_in_minutes: appt.duration_in_minutes
       }
 
-      @appointments.push(apptObject)
+      @responseArray.push(apptObject)
     end
 
-    logger.debug { "Obtained #{@appointments.length} appointments" }
-    logger.debug { "Appointments: #{@appointments.inspect}" }
-
-    # TODO: return filtered values
-    head :ok
+    return @responseArray
   end
 
   def create
