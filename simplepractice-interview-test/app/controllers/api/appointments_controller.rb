@@ -11,7 +11,19 @@ class Api::AppointmentsController < ApplicationController
       filteredAppts = filteredAppts.all
       logger.debug { "Obtaining all appointments" }
     else
+      #checking if query parameters valid
+      validParameters = Set["past", "length", "page"]
+      #logger.debug { "query parameters: #{request.query_parameters}" }
+      request.query_parameters.each_key do |key|
+        #found invalid parameter
+        if !validParameters.include?(key)
+          logger.debug { "Error. Can't process request for #{request.fullpath}" }
+          return  
+        end  
+      end
+
       # TODO: return filtered values
+      #filtering appointments by past or future
       if params.has_key?(:past)
         #filtering appointments by past for ?past=1 and future for ?past=0
         case params[:past]
@@ -24,32 +36,41 @@ class Api::AppointmentsController < ApplicationController
           filteredAppts = filteredAppts.where("start_time > ?", Time.now)
           logger.debug { "Obtaining future appointments" }
         else
-          logger.debug { "Error. ?past=#{params[:past]} is invalid parameter" }
+          logger.debug { "Error. ?past=#{params[:past]} is invalid value" }
           return
         end
-      else
-        logger.debug { "Error. Can't process request for #{request.fullpath}" }
+      end
+
+      #checking if url has both :length and :page parameters
+      if (params.has_key?(:length) && !params.has_key?(:page)) || (!params.has_key?(:length) && params.has_key?(:page))
+        logger.debug { "Error. :length and :page parameters not both present in query." }
         return
       end
-    end
 
-    # TODO: return filtered values
-    # GET /api/appointments/?past=1. returns past appointments
-    #elsif params[:past] == "1"
-    #  filteredAppts = Appointment.where("start_time < ?", Time.now)
-    #  @appointments = toAppointmentArray(filteredAppts)
-    #  logger.debug { "Obtained #{@appointments.length} past appointments" }
-    #  logger.debug { "Past appointments: #{@appointments.inspect}" }
-    # GET /api/appointments/?past=0. returns future appointments
-    #elsif params[:past] == "0"
-    #  filteredAppts = Appointment.where("start_time > ?", Time.now)
-    #  @appointments = toAppointmentArray(filteredAppts)
-    #  logger.debug { "Obtained #{@appointments.length} future appointments" }
-    #  logger.debug { "Future appointments: #{@appointments.inspect}" }
-    #else
-    #  @appointments = nil
-    #  logger.debug { "Error. Couldn't process request for #{request.fullpath}" }
-    #end
+      #adjusting number of results based on page number and page length
+      if params.has_key?(:length) && params.has_key?(:page)
+        # GET /api/appointments/?length=[int]&page=[int]
+        page = params[:page].to_i
+        length = params[:length].to_i
+
+        #checking if page number valid
+        if page <= 0
+          logger.debug { "Error. ?page=#{page} is invalid value" }
+          return
+        end
+
+        #checking if page length valid
+        if length <= 0
+          logger.debug { "Error. ?length=#{length} is invalid value" }
+          return
+        end 
+
+        logger.debug { "Obtaining appointments on page #{page} of length #{length}" }
+        k = length*(page - 1)
+        logger.debug { "Skipping #{k} results" }
+        filteredAppts = filteredAppts.limit(length).offset(k)
+      end
+    end
 
     @appointments = []
 
