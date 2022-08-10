@@ -1,70 +1,45 @@
 class Api::AppointmentsController < ApplicationController
-  #get request for appointments
+  # get request for appointments
   def index
     filteredAppts = Appointment
     @appointments = nil
     
-    #filtering appointments based on url
+    # filtering appointments based on url
     if !request.query_string.present?
       # TODO: return all values
       # GET /api/appointments
       filteredAppts = filteredAppts.all
       logger.debug { "Obtaining all appointments" }
     else
-      #checking if query parameters valid
-      validParameters = Set["past", "length", "page"]
-      #logger.debug { "query parameters: #{request.query_parameters}" }
-      request.query_parameters.each_key do |key|
-        #found invalid parameter
-        if !validParameters.include?(key)
-          logger.debug { "Error. Can't process request for #{request.fullpath}" }
-          return  
-        end  
+      # making sure query parameters are valid
+      if !validIndexQueryParams
+        logger.debug { "Error. Invalid query parameters."}
+        return head(:bad_request)
       end
 
       # TODO: return filtered values
-      #filtering appointments by past or future
+      # filtering appointments by time period
       if params.has_key?(:past)
-        #filtering appointments by past for ?past=1 and future for ?past=0
+        # GET /api/appointments/?past=1 <- past appointments
+        # GET /api/appointments/?past=0 <- future appointments
         case params[:past]
         when "1"
-          # GET /api/appointments/?past=1
-          filteredAppts = filteredAppts.where("start_time < ?", Time.now)
           logger.debug { "Obtaining past appointments" }
+          filteredAppts = filteredAppts.where("start_time < ?", Time.now)
         when "0"
-          # GET /api/appointments/?past=0
-          filteredAppts = filteredAppts.where("start_time > ?", Time.now)
           logger.debug { "Obtaining future appointments" }
+          filteredAppts = filteredAppts.where("start_time > ?", Time.now)
         else
-          logger.debug { "Error. ?past=#{params[:past]} is invalid value" }
-          return
+          logger.debug { "Error. Invalid value for ?past=" }
+          return head(:bad_request)
         end
       end
 
-      #checking if url has both :length and :page parameters
-      if (params.has_key?(:length) && !params.has_key?(:page)) || (!params.has_key?(:length) && params.has_key?(:page))
-        logger.debug { "Error. :length and :page parameters not both present in query." }
-        return
-      end
-
-      #adjusting number of results based on page number and page length
+      # adjusting number of results based on page number and page length
       if params.has_key?(:length) && params.has_key?(:page)
         # GET /api/appointments/?length=[int]&page=[int]
         page = params[:page].to_i
         length = params[:length].to_i
-
-        #checking if page number valid
-        if page <= 0
-          logger.debug { "Error. ?page=#{page} is invalid value" }
-          return
-        end
-
-        #checking if page length valid
-        if length <= 0
-          logger.debug { "Error. ?length=#{length} is invalid value" }
-          return
-        end 
-
         logger.debug { "Obtaining appointments on page #{page} of length #{length}" }
         k = length*(page - 1)
         logger.debug { "Skipping #{k} results" }
@@ -72,10 +47,27 @@ class Api::AppointmentsController < ApplicationController
       end
     end
 
-    @appointments = []
+    @appointments = appointmentArray(filteredAppts)
+    logger.debug { "Found #{@appointments.length} appointments" }
+    logger.debug { "Sample appointments: #{@appointments.sample(3)}" }
+    head :ok
+  end
 
-    #assembling appointment records into an array of a specific format
-    filteredAppts.each do |appt|
+  def create
+    # TODO:
+  end
+
+  private
+
+  # creates an array of hash tables based on an appointment relational object
+  # @param apptRecords - appointment records from ApplicationRecord class
+  # returns array of form [{id: <int>, patient: { name: <string> }, doctor : { name: <string>, id: <int> },
+  # created_at: <iso8601>, start_time: <iso8601>, duration_in_minutes: <int>}, ...]
+  def appointmentArray(apptRecords)
+    apptArray = []
+
+    # assembling appointment records into an array of a specific format
+    apptRecords.each do |appt|
       pt = Patient.find(appt.patient_id)
       dr = Doctor.find(appt.doctor_id)
   
@@ -91,15 +83,59 @@ class Api::AppointmentsController < ApplicationController
         duration_in_minutes: appt.duration_in_minutes
       }
   
-      @appointments.push(apptObject)
+      apptArray.push(apptObject)
+    end  
+
+    return apptArray
+  end
+
+  # ensures that all parameters in the index query url are valid
+  # returns true is query parameters are valid, false otherwise
+  def validIndexQueryParams
+    validParameters = Set["past", "length", "page"]
+    # ensuring there are no unknown parameters
+    request.query_parameters.each_key do |key|
+      # found invalid parameter
+      if !validParameters.include?(key)
+        logger.debug { "Error. Unknown query parameter: #{key}" }
+        return false
+      end
     end
 
-    logger.debug { "Found #{@appointments.length} appointments" }
-    logger.debug { "Sample appointments: #{@appointments.sample(3)}" }
-    head :ok
-  end
+    # checking ?past=
+    if params.has_key?(:past)
+      # ensuring ?past=1 or ?past=0
+      if params[:past] != "1" && params[:past] != "0"
+        logger.debug { "Error. Invalid value for ?past=" }
+        return false
+      end
+    end
 
-  def create
-    # TODO:
-  end
+    # checking ?length=[int]&page=[int]
+    if params.has_key?(:length) || params.has_key?(:page)
+      # ensuring that both length and page parameters are both present
+      if !(params.has_key?(:length) && params.has_key?(:page))
+        logger.debug { "Error. length and page parameters not both present in url query" }
+        return false
+      end
+
+      length = Integer(params[:length]) rescue false
+
+      # ensuring that length is positive
+      if length == false || length <= 0
+        logger.debug { "Error. Invalid value for ?length="}
+        return false
+      end
+
+      page = Integer(params[:page]) rescue false
+
+      # ensuring that page is positive
+      if page == false || page <= 0
+        logger.debug { "Error. Invalid value for ?page="}
+        return false
+      end
+    end
+
+    return true
+  end  
 end

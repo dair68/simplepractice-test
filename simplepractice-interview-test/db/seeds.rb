@@ -2,25 +2,25 @@
 # - There should be 10 Doctors with unique names
 # - Each doctor should have 10 patients with unique names
 # - Each patient should have 10 appointments (5 in the past, 5 in the future)
-#   - Each appointment should be 50 minutes in duration
+# - Each appointment should be 50 minutes in duration
 Doctor.destroy_all
 Patient.destroy_all
 Appointment.destroy_all
 
 currentTime = Time.now
 
-#creating 10 doctors
+# creating 10 doctors
 10.times do
   dr = Doctor.create!(name: Faker::Name.unique.name)
 
- #creating 10 patients for this doctor
+ # creating 10 patients for this doctor
   10.times do
     pt = Patient.create(
       doctor_id: dr.id,
       name: Faker::Name.unique.name
     )
 
-    #creating 5 appointments in the past for this patient
+    # creating 5 appointments in the past for this patient
     5.times do
       Appointment.create(
         doctor_id: dr.id,
@@ -30,7 +30,7 @@ currentTime = Time.now
       )
     end
 
-    #creating 5 appointments in the future for this patient
+    # creating 5 appointments in the future for this patient
     5.times do
       Appointment.create(
         doctor_id: dr.id,
