@@ -1,14 +1,13 @@
 class Api::AppointmentsController < ApplicationController
   # get request for appointments
   def index
-    filteredAppts = Appointment
     @appointments = nil
-    
+
     # filtering appointments based on url
     if !request.query_string.present?
       # TODO: return all values
-      # GET /api/appointments
-      filteredAppts = filteredAppts.all
+      # GET api/appointments
+      @appointments = appointmentArray(Appointment)
       logger.debug { "Obtaining all appointments" }
     else
       # making sure query parameters are valid
@@ -17,11 +16,13 @@ class Api::AppointmentsController < ApplicationController
         return head(:bad_request)
       end
 
+      filteredAppts = Appointment
+
       # TODO: return filtered values
       # filtering appointments by time period
       if params.has_key?(:past)
-        # GET /api/appointments/?past=1 <- past appointments
-        # GET /api/appointments/?past=0 <- future appointments
+        # GET api/appointments/?past=1 <- past appointments
+        # GET api/appointments/?past=0 <- future appointments
         case params[:past]
         when "1"
           logger.debug { "Obtaining past appointments" }
@@ -37,7 +38,7 @@ class Api::AppointmentsController < ApplicationController
 
       # adjusting number of results based on page number and page length
       if params.has_key?(:length) && params.has_key?(:page)
-        # GET /api/appointments/?length=[int]&page=[int]
+        # GET api/appointments/?length=[int]&page=[int]
         page = params[:page].to_i
         length = params[:length].to_i
         logger.debug { "Obtaining appointments on page #{page} of length #{length}" }
@@ -45,9 +46,10 @@ class Api::AppointmentsController < ApplicationController
         logger.debug { "Skipping #{k} results" }
         filteredAppts = filteredAppts.limit(length).offset(k)
       end
+
+      @appointments = appointmentArray(filteredAppts)
     end
 
-    @appointments = appointmentArray(filteredAppts)
     logger.debug { "Found #{@appointments.length} appointments" }
     logger.debug { "Sample appointments: #{@appointments.sample(3)}" }
     head :ok
@@ -59,24 +61,21 @@ class Api::AppointmentsController < ApplicationController
 
   private
 
-  # creates an array of hash tables based on an appointment relational object
-  # @param apptRecords - appointment records from ApplicationRecord class
+  # creates an array of hash tables based on an appointment object
+  # @param apptRecords - Appointment model or relation
   # returns array of form [{id: <int>, patient: { name: <string> }, doctor : { name: <string>, id: <int> },
   # created_at: <iso8601>, start_time: <iso8601>, duration_in_minutes: <int>}, ...]
   def appointmentArray(apptRecords)
     apptArray = []
 
     # assembling appointment records into an array of a specific format
-    apptRecords.each do |appt|
-      pt = Patient.find(appt.patient_id)
-      dr = Doctor.find(appt.doctor_id)
-  
+    apptRecords.find_each do |appt|
       apptObject = {
         id: appt.id,
-        patient: { name: pt.name },
+        patient: { name: appt.patient.name },
         doctor: { 
-          name: dr.name,
-          id: dr.id
+          name: appt.doctor.name,
+          id: appt.doctor.id
         },
         created_at: appt.created_at,
         start_time: appt.start_time,
