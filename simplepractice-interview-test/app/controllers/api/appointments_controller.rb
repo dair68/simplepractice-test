@@ -11,7 +11,7 @@ class Api::AppointmentsController < ApplicationController
       logger.debug { "Obtaining all appointments" }
     else
       # making sure query parameters are valid
-      if !validIndexQueryParams
+      if !validIndexParams
         logger.debug { "Error. Invalid query parameters."}
         return head(:bad_request)
       end
@@ -62,13 +62,19 @@ class Api::AppointmentsController < ApplicationController
     logger.debug { "Creating new appointment" }
 
     # post parameters: { patient: { name: <string> }, doctor: { id: <int> }, start_time: <iso8604>, 
-    #  duration_in_minutes: <int> }
+    # duration_in_minutes: <int> }
+    drId = params[:doctor][:id]
+    ptName = params[:patient][:name]
+    ptId = Patient.where(doctor_id: drId).find_by(name: ptName).id
+
     @appointment = Appointment.create(
-      doctor_id: params[:doctor][:id],
-      #patient_id: Patient.,
+      doctor_id: drId,
+      patient_id: ptId,
       start_time: params[:start_time],
       duration_in_minutes: params[:duration_in_minutes]
     )
+
+    logger.debug { "New appointment: #{@appointment.inspect}"}
     head :ok
   end
 
@@ -103,7 +109,7 @@ class Api::AppointmentsController < ApplicationController
 
   # ensures that all parameters in the index query url are valid
   # returns true is query parameters are valid, false otherwise
-  def validIndexQueryParams
+  def validIndexParams
     validParameters = Set["past", "length", "page"]
     # ensuring there are no unknown parameters
     request.query_parameters.each_key do |key|
