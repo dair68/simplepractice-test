@@ -7,7 +7,7 @@ class Api::AppointmentsController < ApplicationController
     if !request.query_string.present?
       # TODO: return all values
       # GET api/appointments
-      @appointments = appointmentArray(Appointment)
+      @appointments = appointmentArray(Appointment.preload(:doctor, :patient))
       logger.debug { "Obtaining all appointments" }
     else
       # making sure query parameters are valid
@@ -47,7 +47,7 @@ class Api::AppointmentsController < ApplicationController
         filteredAppts = filteredAppts.limit(length).offset(k)
       end
 
-      @appointments = appointmentArray(filteredAppts)
+      @appointments = appointmentArray(filteredAppts.preload(:doctor, :patient))
     end
 
     logger.debug { "Found #{@appointments.length} appointments" }
@@ -55,8 +55,21 @@ class Api::AppointmentsController < ApplicationController
     head :ok
   end
 
+  # posts a new appointment to database
   def create
     # TODO:
+    # POST api/appointments
+    logger.debug { "Creating new appointment" }
+
+    # post parameters: { patient: { name: <string> }, doctor: { id: <int> }, start_time: <iso8604>, 
+    #  duration_in_minutes: <int> }
+    @appointment = Appointment.create(
+      doctor_id: params[:doctor][:id],
+      #patient_id: Patient.,
+      start_time: params[:start_time],
+      duration_in_minutes: params[:duration_in_minutes]
+    )
+    head :ok
   end
 
   private
