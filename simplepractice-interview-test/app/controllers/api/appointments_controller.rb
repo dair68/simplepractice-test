@@ -1,8 +1,6 @@
 class Api::AppointmentsController < ApplicationController
   # get request for appointments
   def index
-    @appointments = nil
-
     # filtering appointments based on url
     if !request.query_string.present?
       # TODO: return all values
@@ -10,12 +8,6 @@ class Api::AppointmentsController < ApplicationController
       @appointments = appointmentArray(Appointment.preload(:doctor, :patient))
       logger.debug { "Obtaining all appointments" }
     else
-      # making sure query parameters are valid
-      if !validIndexParams
-        logger.debug { "Error. Invalid query parameters."}
-        return head(:bad_request)
-      end
-
       filteredAppts = Appointment
 
       # TODO: return filtered values
@@ -23,16 +15,12 @@ class Api::AppointmentsController < ApplicationController
       if params.has_key?(:past)
         # GET api/appointments/?past=1 <- past appointments
         # GET api/appointments/?past=0 <- future appointments
-        case params[:past]
-        when "1"
+        if params[:past] == "1"
           logger.debug { "Obtaining past appointments" }
           filteredAppts = filteredAppts.where("start_time < ?", Time.now)
-        when "0"
+        elsif params[:past] == "0"
           logger.debug { "Obtaining future appointments" }
           filteredAppts = filteredAppts.where("start_time > ?", Time.now)
-        else
-          logger.debug { "Error. Invalid value for ?past=" }
-          return head(:bad_request)
         end
       end
 
@@ -42,9 +30,13 @@ class Api::AppointmentsController < ApplicationController
         page = params[:page].to_i
         length = params[:length].to_i
         logger.debug { "Obtaining appointments on page #{page} of length #{length}" }
-        k = length*(page - 1)
-        logger.debug { "Skipping #{k} results" }
-        filteredAppts = filteredAppts.limit(length).offset(k)
+        skippedRecords = length*(page - 1)
+        logger.debug { "Skipping #{skippedRecords} results" }
+
+        # checking that k is nonnegative integer
+        if skippedRecords > 0
+          filteredAppts = filteredAppts.limit(length).offset(skippedRecords)
+        end
       end
 
       @appointments = appointmentArray(filteredAppts.preload(:doctor, :patient))
@@ -59,6 +51,9 @@ class Api::AppointmentsController < ApplicationController
   def create
     # TODO:
     # POST api/appointments
+    params.require(:patient).require(:name)
+    params.require(:doctor).require(:id)
+    params.require(:appointment).permit(:start_time, :duration_in_minutes)
     logger.debug { "Creating new appointment" }
 
     # post parameters: { patient: { name: <string> }, doctor: { id: <int> }, start_time: <iso8604>, 
@@ -67,14 +62,22 @@ class Api::AppointmentsController < ApplicationController
     ptName = params[:patient][:name]
     ptId = Patient.where(doctor_id: drId).find_by(name: ptName).id
 
-    @appointment = Appointment.create(
+    @appointment = Appointment.new(
       doctor_id: drId,
       patient_id: ptId,
       start_time: params[:start_time],
-      duration_in_minutes: params[:duration_in_minutes]
     )
 
-    logger.debug { "New appointment: #{@appointment.inspect}"}
+    # adding duration in minutes to record if provided by body
+    if params.has_key?(:duration_in_minutes)
+      @appointment.duration_in_minutes = params[:duration_in_minutes]
+    end
+
+    if @appointment.save
+      logger.debug { "New appointment: #{@appointment.inspect}"}
+    else
+      logger.debug { "Appointment creation failed."}
+    end
     head :ok
   end
 
@@ -106,54 +109,4 @@ class Api::AppointmentsController < ApplicationController
 
     return apptArray
   end
-
-  # ensures that all parameters in the index query url are valid
-  # returns true is query parameters are valid, false otherwise
-  def validIndexParams
-    validParameters = Set["past", "length", "page"]
-    # ensuring there are no unknown parameters
-    request.query_parameters.each_key do |key|
-      # found invalid parameter
-      if !validParameters.include?(key)
-        logger.debug { "Error. Unknown query parameter: #{key}" }
-        return false
-      end
-    end
-
-    # checking ?past=
-    if params.has_key?(:past)
-      # ensuring ?past=1 or ?past=0
-      if params[:past] != "1" && params[:past] != "0"
-        logger.debug { "Error. Invalid value for ?past=" }
-        return false
-      end
-    end
-
-    # checking ?length=[int]&page=[int]
-    if params.has_key?(:length) || params.has_key?(:page)
-      # ensuring that both length and page parameters are both present
-      if !(params.has_key?(:length) && params.has_key?(:page))
-        logger.debug { "Error. length and page parameters not both present in url query" }
-        return false
-      end
-
-      length = Integer(params[:length]) rescue false
-
-      # ensuring that length is positive
-      if length == false || length <= 0
-        logger.debug { "Error. Invalid value for ?length="}
-        return false
-      end
-
-      page = Integer(params[:page]) rescue false
-
-      # ensuring that page is positive
-      if page == false || page <= 0
-        logger.debug { "Error. Invalid value for ?page="}
-        return false
-      end
-    end
-
-    return true
-  end  
 end
