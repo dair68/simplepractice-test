@@ -11,7 +11,7 @@ currentTime = Time.now
 
 # creating 10 doctors
 10.times do
-  dr = Doctor.create!(name: Faker::Name.unique.name)
+  dr = Doctor.create(name: Faker::Name.unique.name)
 
  # creating 10 patients for this doctor
   10.times do

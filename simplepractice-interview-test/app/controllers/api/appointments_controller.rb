@@ -37,7 +37,7 @@ class Api::AppointmentsController < ApplicationController
             page = params[:page].to_i
             length = params[:length].to_i
 
-            #checking if :length and :page are positive numbers
+            # checking if :length and :page are positive numbers
             if page > 0 && length > 0
               skippedRecords = length*(page - 1)
               logger.debug { "Obtaining appointments on page #{page} of length #{length}" }
@@ -79,30 +79,41 @@ class Api::AppointmentsController < ApplicationController
     # checking if doctor with inputted id exists
     if !Doctor.exists?(drId)
       logger.debug { "Error. Doctor with id #{drId} does not exist."}
-      return head(:bad_request)
+      return head(:not_found)
     end
 
     ptName = params[:patient][:name]
-    pt = Patient.find_by(name: ptName)
+    @patient = Patient.where(name: ptName).first_or_initialize
 
-    # checking if patient with inputted name exists
-    if pt == nil 
-      logger.debug {"Error. Patient with name #{ptName} does not exist."}
-      return head(:bad_request)
+    # checking if patient assigned the correct doctor
+    if @patient.doctor_id == nil
+      logger.debug { "Creating patient #{ptName}" }
+      @patient.doctor_id = drId
+    elsif @patient.doctor_id != drId
+      logger.debug { "Error. Patient #{ptName} assigned doctor other than doctor #{@patient.doctor.id}." }
+      return head(:not_found)
     end
+
+    @patient.save
+    logger.debug { "Patient: #{@patient.inspect}" }
 
     @appointment = Appointment.new(
       doctor_id: drId,
-      patient_id: pt.id,
-      start_time: params[:start_time],
-      duration_in_minutes: params[:duration_in_minutes]
+      patient_id: @patient.id,
+      start_time: params[:start_time]
     )
+
+    # adding duration if provided
+    if params[:duration_in_minutes] != nil
+      @appointment.duration_in_minutes = params[:duration_in_minutes]
+    end
 
     if @appointment.save
       logger.debug { "New appointment: #{@appointment.inspect}"}
     else
       logger.debug { "Appointment creation failed."}
       logger.debug { @appointment.errors.full_messages }
+      return head(:bad_request)
     end
     head :ok
   end
