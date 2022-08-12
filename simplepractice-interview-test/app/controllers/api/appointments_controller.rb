@@ -15,27 +15,42 @@ class Api::AppointmentsController < ApplicationController
       if params.has_key?(:past)
         # GET api/appointments/?past=1 <- past appointments
         # GET api/appointments/?past=0 <- future appointments
-        if params[:past] == "1"
+        case params[:past]
+        when "1"
           logger.debug { "Obtaining past appointments" }
           filteredAppts = filteredAppts.where("start_time < ?", Time.now)
-        elsif params[:past] == "0"
+        when "0"
           logger.debug { "Obtaining future appointments" }
           filteredAppts = filteredAppts.where("start_time > ?", Time.now)
+        else
+          logger.debug { "Unknown value for :past" }
         end
       end
 
-      # adjusting number of results based on page number and page length
-      if params.has_key?(:length) && params.has_key?(:page)
-        # GET api/appointments/?length=[int]&page=[int]
-        page = params[:page].to_i
-        length = params[:length].to_i
-        logger.debug { "Obtaining appointments on page #{page} of length #{length}" }
-        skippedRecords = length*(page - 1)
-        logger.debug { "Skipping #{skippedRecords} results" }
+      # checking if length hand page parameters both present
+      if params.has_key?(:length) || params.has_key?(:page)
+        # adjusting number of results based on page number and page length
+        if params.has_key?(:length) && params.has_key?(:page)
+          # GET api/appointments/?length=[int]&page=[int]
+          #checking if length is integer
+          if is_int?(params[:length]) && is_int?(params[:page])
+            page = params[:page].to_i
+            length = params[:length].to_i
 
-        # checking that k is nonnegative integer
-        if skippedRecords > 0
-          filteredAppts = filteredAppts.limit(length).offset(skippedRecords)
+            #checking if :length and :page are positive numbers
+            if page > 0 && length > 0
+              skippedRecords = length*(page - 1)
+              logger.debug { "Obtaining appointments on page #{page} of length #{length}" }
+              logger.debug { "Skipping #{skippedRecords} results" }
+              filteredAppts = filteredAppts.limit(length).offset(skippedRecords)
+            else
+              logger.debug { ":length and :page parameters not both positive" }
+            end
+          else
+            logger.debug { ":length and :page parameters not both ints" }
+          end
+        else
+          logger.debug { ":length and :page parameters not both present" }
         end
       end
 
@@ -53,35 +68,53 @@ class Api::AppointmentsController < ApplicationController
     # POST api/appointments
     params.require(:patient).require(:name)
     params.require(:doctor).require(:id)
-    params.require(:appointment).permit(:start_time, :duration_in_minutes)
+    params.require(:start_time)
+    params.permit(:duration_in_minutes)
     logger.debug { "Creating new appointment" }
 
     # post parameters: { patient: { name: <string> }, doctor: { id: <int> }, start_time: <iso8604>, 
     # duration_in_minutes: <int> }
     drId = params[:doctor][:id]
+
+    # checking if doctor with inputted id exists
+    if !Doctor.exists?(drId)
+      logger.debug { "Error. Doctor with id #{drId} does not exist."}
+      return head(:bad_request)
+    end
+
     ptName = params[:patient][:name]
-    ptId = Patient.where(doctor_id: drId).find_by(name: ptName).id
+    pt = Patient.find_by(name: ptName)
+
+    # checking if patient with inputted name exists
+    if pt == nil 
+      logger.debug {"Error. Patient with name #{ptName} does not exist."}
+      return head(:bad_request)
+    end
 
     @appointment = Appointment.new(
       doctor_id: drId,
-      patient_id: ptId,
+      patient_id: pt.id,
       start_time: params[:start_time],
+      duration_in_minutes: params[:duration_in_minutes]
     )
-
-    # adding duration in minutes to record if provided by body
-    if params.has_key?(:duration_in_minutes)
-      @appointment.duration_in_minutes = params[:duration_in_minutes]
-    end
 
     if @appointment.save
       logger.debug { "New appointment: #{@appointment.inspect}"}
     else
       logger.debug { "Appointment creation failed."}
+      logger.debug { @appointment.errors.full_messages }
     end
     head :ok
   end
 
   private
+
+  # checks if a string is an integer
+  # @param string - a string
+  # returns true if string is a integer, false otherwise
+  def is_int? string
+    true if Integer(string) rescue false
+  end
 
   # creates an array of hash tables based on an appointment object
   # @param apptRecords - Appointment model or relation
