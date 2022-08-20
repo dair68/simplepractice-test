@@ -5,7 +5,7 @@ class Api::AppointmentsController < ApplicationController
     if !request.query_string.present?
       # TODO: return all values
       # GET api/appointments
-      @appointments = appointmentArray(Appointment.preload(:doctor, :patient))
+      appointments = appointmentArray(Appointment.preload(:doctor, :patient))
       logger.debug { "Obtaining all appointments" }
     else
       filteredAppts = Appointment
@@ -54,12 +54,12 @@ class Api::AppointmentsController < ApplicationController
         end
       end
 
-      @appointments = appointmentArray(filteredAppts.preload(:doctor, :patient))
+      appointments = appointmentArray(filteredAppts.preload(:doctor, :patient))
     end
 
-    logger.debug { "Found #{@appointments.length} appointments" }
-    logger.debug { "Sample appointments: #{@appointments.sample(3)}" }
-    head :ok
+    logger.debug { "Found #{appointments.length} appointments" }
+    logger.debug { "Sample appointments: #{appointments.sample(3)}" }
+    render :json => appointments, :status => :ok
   end
 
   # posts a new appointment to database
