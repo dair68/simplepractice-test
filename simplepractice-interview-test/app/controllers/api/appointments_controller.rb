@@ -79,43 +79,58 @@ class Api::AppointmentsController < ApplicationController
     # checking if doctor with inputted id exists
     if !Doctor.exists?(drId)
       logger.debug { "Error. Doctor with id #{drId} does not exist."}
+      render :json => {
+        status: "error",
+        message: "Doctor with id #{drId} does not exist.",
+        code: 404
+      }, :status => :not_found
       return head(:not_found)
     end
 
     ptName = params[:patient][:name]
-    @patient = Patient.where(name: ptName).first_or_initialize
+    patient = Patient.where(name: ptName).first_or_initialize
 
     # checking if patient assigned the correct doctor
-    if @patient.doctor_id == nil
+    if patient.doctor_id == nil
       logger.debug { "Creating patient #{ptName}" }
-      @patient.doctor_id = drId
-    elsif @patient.doctor_id != drId
-      logger.debug { "Error. Patient #{ptName} assigned doctor other than doctor #{@patient.doctor.id}." }
+      patient.doctor_id = drId
+    elsif patient.doctor_id != drId
+      logger.debug { "Error. Patient #{ptName} assigned doctor other than doctor #{patient.doctor.id}." }
+      render :json => {
+        status: "error",
+        message: "Error. Patient #{ptName} assigned doctor other than doctor #{patient.doctor.id}.",
+        code: 404
+      }, :status => :not_found
       return head(:not_found)
     end
 
-    @patient.save
-    logger.debug { "Patient: #{@patient.inspect}" }
+    patient.save
+    logger.debug { "Patient: #{patient.inspect}" }
 
-    @appointment = Appointment.new(
+    appointment = Appointment.new(
       doctor_id: drId,
-      patient_id: @patient.id,
+      patient_id: patient.id,
       start_time: params[:start_time]
     )
 
     # adding duration if provided
     if params[:duration_in_minutes] != nil
-      @appointment.duration_in_minutes = params[:duration_in_minutes]
+      appointment.duration_in_minutes = params[:duration_in_minutes]
     end
 
-    if @appointment.save
-      logger.debug { "New appointment: #{@appointment.inspect}"}
+    if appointment.save
+      logger.debug { "New appointment: #{appointment.inspect}"}
+      render :json => appointment, :status => :ok
     else
       logger.debug { "Appointment creation failed."}
-      logger.debug { @appointment.errors.full_messages }
+      logger.debug { appointment.errors.full_messages }
+      render :json => {
+        status: "error",
+        message: appointment.errors.full_messages ,
+        code: 400
+      }, :status => :bad_request
       return head(:bad_request)
     end
-    head :ok
   end
 
   private
