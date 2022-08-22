@@ -117,7 +117,7 @@ class Api::AppointmentsController < ApplicationController
     else
       logger.debug { "Appointment creation failed."}
       logger.debug { appointment.errors.full_messages }
-      render json: {error: appointment.errors.full_messages}, status: :bad_request
+      render json: {error: appointment.errors.full_messages}, status: :internal_server_error
     end
   end
 
