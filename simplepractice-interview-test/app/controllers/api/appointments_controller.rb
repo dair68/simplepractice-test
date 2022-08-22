@@ -59,7 +59,7 @@ class Api::AppointmentsController < ApplicationController
 
     logger.debug { "Found #{appointments.length} appointments" }
     logger.debug { "Sample appointments: #{appointments.sample(3)}" }
-    render :json => appointments, :status => :ok
+    render json: appointments, status: :ok
   end
 
   # posts a new appointment to database
@@ -79,12 +79,8 @@ class Api::AppointmentsController < ApplicationController
     # checking if doctor with inputted id exists
     if !Doctor.exists?(drId)
       logger.debug { "Error. Doctor with id #{drId} does not exist."}
-      render :json => {
-        status: "error",
-        message: "Doctor with id #{drId} does not exist.",
-        code: 404
-      }, :status => :not_found
-      return head(:not_found)
+      render json: {error: "Doctor with id #{drId} does not exist."}, status: :not_found
+      return
     end
 
     ptName = params[:patient][:name]
@@ -96,12 +92,9 @@ class Api::AppointmentsController < ApplicationController
       patient.doctor_id = drId
     elsif patient.doctor_id != drId
       logger.debug { "Error. Patient #{ptName} assigned doctor other than doctor #{patient.doctor.id}." }
-      render :json => {
-        status: "error",
-        message: "Error. Patient #{ptName} assigned doctor other than doctor #{patient.doctor.id}.",
-        code: 404
-      }, :status => :not_found
-      return head(:not_found)
+      render json: {error: "Error. Patient #{ptName} assigned doctor other than doctor #{patient.doctor.id}."}, 
+      status: :not_found
+      return
     end
 
     patient.save
@@ -120,16 +113,11 @@ class Api::AppointmentsController < ApplicationController
 
     if appointment.save
       logger.debug { "New appointment: #{appointment.inspect}"}
-      render :json => appointment, :status => :ok
+      render json: appointment, status: :ok
     else
       logger.debug { "Appointment creation failed."}
       logger.debug { appointment.errors.full_messages }
-      render :json => {
-        status: "error",
-        message: appointment.errors.full_messages ,
-        code: 400
-      }, :status => :bad_request
-      return head(:bad_request)
+      render json: {error: appointment.errors.full_messages}, status: :bad_request
     end
   end
 
